@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -25,6 +26,12 @@ var optTimeout = flag.Duration("timeout", 10*time.Second, "Timeout of http reque
 
 func init() {
 	godotenv.Load()
+	rep := strings.NewReplacer("-", "_")
+	flag.VisitAll(func(f *flag.Flag) {
+		if s := os.Getenv("GITLAB_CLI_" + rep.Replace(strings.ToUpper(f.Name))); s != "" {
+			f.Value.Set(s)
+		}
+	})
 	flag.Parse()
 }
 
@@ -38,11 +45,7 @@ func main() {
 		log.Fatalf("--group must be specified")
 	}
 
-	token := *optToken
-	if token == "" {
-		token = os.Getenv("GITLAB_TOKEN")
-	}
-	if token == "" {
+	if *optToken == "" {
 		log.Fatalf("--token must be specified")
 	}
 
@@ -69,7 +72,7 @@ func main() {
 			panic(err)
 		}
 
-		req.Header.Add("Private-Token", token)
+		req.Header.Add("Private-Token", *optToken)
 
 		noMorePages, err := func() (bool, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), *optTimeout)
